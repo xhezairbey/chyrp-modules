@@ -1,0 +1,6 @@
+Chweet Module
+=============
+
+Chweet is *"Post to Twitter"* Module developed to work with Chyrp version 2.2 and above.
+
+Chweet (after enabling) tweets every new published posts to Twitter through the OAuth protocol. Thus, there's no need to enter username/password combination in order to submit a tweet. All you have to do is, authorize the module (app) to your account in Twitter and you'll be all set and ready to rock'n'roll.
