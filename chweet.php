@@ -88,8 +88,9 @@
         }
 
         public function post_options($fields, $post = NULL) {
+            $checked = @$post->tweeted ? true : false;
             $config = Config::current();
-            if (!isset($config->chweet_oauth_token) and !isset($config->chweet_oauth_secret))
+            if (empty($config->chweet_oauth_token) and empty($config->chweet_oauth_secret))
                 $extra = "<small>Please <a href=" . url("/admin/?action=chweet_settings") . ">authorize</a> with Twitter first!</small>";
             else
                 $extra = __("<small>Want to publish this post to Twitter?</small>", "chweet");
@@ -97,28 +98,39 @@
             $fields[] = array("attr" => "chweet",
                               "label" => __("Tweet it!", "chweet"),
                               "type" => "checkbox",
+                              "checked" => $checked,
                               "extra" => $extra);
             return $fields;
         }
 
         public function add_post($post) {
-            if (empty($_POST['chweet']) or $post->status != "public")
-                return;    
-            $this->tweet_post($post);
+            fallback($chweet, (int) !empty($_POST['chweet']));
             SQL::current()->insert("post_attributes",
                                     array("name" => "tweeted",
-                                          "value" => $_POST['chweet'],
+                                          "value" => $chweet,
                                           "post_id" => $post->id));
+
+            if ($chweet and $post->status == "public")
+                $this->tweet_post($post);
         }
 
         public function update_post($post) {
-            if (empty($_POST['chweet']) or $post->status != "public")
-                return;
-            $this->tweet_post($post);
-            SQL::current()->replace("post_attributes",
-                                    array("name" => "tweeted",
-                                          "value" => $_POST['chweet'],
-                                          "post_id" => $post->id));
+            $sql = SQL::current();
+            fallback($chweet, (int) !empty($_POST['chweet']));
+
+            if ($sql->count("post_attributes", array("post_id" => $post->id, "name" => "tweeted")))
+                $sql->update("post_attributes",
+                             array("post_id" => $post->id,
+                                   "name" => "tweeted"),
+                             array("value" => $chweet));
+            else
+                $sql->insert("post_attributes",
+                             array("post_id" => $post->id,
+                                   "name" => "tweeted",
+                                   "value" => $chweet));
+
+            if ($chweet and $post->status == "public")
+                $this->tweet_post($post);
         }
 
         private function tweet_post($post) {
