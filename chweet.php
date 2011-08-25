@@ -40,8 +40,7 @@
                     $url = $tOAuth->getAuthorizeURL($token, false);
                     redirect($url);
                 } else
-                    # Show notification if something went wrong.
-                    echo "Could not connect to Twitter. Refresh the page or try again later.";
+                    error(__("Error"), __("Could not connect to Twitter. Refresh the page or try again later.", "chweet"));
             }
 
             if (!isset($_POST['hash']) or $_POST['hash'] != Config::current()->secure_hashkey)
@@ -62,7 +61,7 @@
             if (isset($_REQUEST['oauth_token']) && $_SESSION['oauth_token'] !== $_REQUEST['oauth_token'])
                 Flash::warning(__("Old token. Please refresh the page and try again."), "/admin/?action=chweet_settings");
             
-            # Create TwitteroAuth object with app key/secret and token key/secret from initial phase
+            # New TwitteroAuth object with app key/secret and token key/secret from SESSION
             $tOAuth = new TwitterOAuth(C_KEY, C_SECRET, $_SESSION['oauth_token'], $_SESSION['oauth_token_secret']);
             $access_token = $tOAuth->getAccessToken($_REQUEST['oauth_verifier']);
 
@@ -101,19 +100,25 @@
                               "extra" => $extra);
             return $fields;
         }
-        
-        
-        # Tweet the Published Post
+
         public function add_post($post) {
             if (empty($_POST['chweet']) or $post->status != "public")
-                return;
+                return;    
             $this->tweet_post($post);
+            SQL::current()->insert("post_attributes",
+                                    array("name" => "tweeted",
+                                          "value" => $_POST['chweet'],
+                                          "post_id" => $post->id));
         }
 
         public function update_post($post) {
             if (empty($_POST['chweet']) or $post->status != "public")
                 return;
             $this->tweet_post($post);
+            SQL::current()->replace("post_attributes",
+                                    array("name" => "tweeted",
+                                          "value" => $_POST['chweet'],
+                                          "post_id" => $post->id));
         }
 
         private function tweet_post($post) {
@@ -146,7 +151,8 @@
 
             $tOAuth = new TwitterOAuth(C_KEY, C_SECRET, $config->chweet_oauth_token, $config->chweet_oauth_secret);
             $user = $tOAuth->get("account/verify_credentials");
-            $tOAuth->post("statuses/update", array("status" => $status));
+            $response = $tOAuth->post("statuses/update", array("status" => $status));
+            return $response;
         }
 
         # By Richard West for v.gd
