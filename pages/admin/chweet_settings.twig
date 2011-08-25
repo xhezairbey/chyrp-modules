@@ -1,0 +1,46 @@
+{% extends "layout.twig" %}
+
+{% block title %}Chweet Settings{% endblock %}
+
+{% block content %}
+<h1>Chweet Settings</h1>
+<form id="chweet_settings" class="split" action="{% admin "chweet_settings" %}" method="post">
+    <fieldset>
+    {% if site.chweet_oauth_token == "" %}
+    <p>
+        <button name="authorize" value="authorize" class="yay"><img src="$theme_url/images/icons/success.png" alt="success" />${ "Authorize" | translate }</button>
+        <small>Authorize Chweet to Twitter</small>
+    </p>
+    {% else %}
+    <p>
+        <span class="button yay">Authorized</span>
+    </p>
+    <hr />
+    <br />
+    {% endif %}
+
+    <p>
+        <label for="chweet_format">Post format</label>
+        <textarea name="chweet_format" id="chweet_format" rows="2" cols="40">${ site.chweet_format | escape }</textarea>
+    </p>
+    <div class="small">
+        <strong>Syntax:</strong>
+        <ul>
+            <li><code>%title%</code>: Title of the post.</li>
+            <li><code>%url%</code>: URL of the post.</li>
+            <li><code>%shorturl%</code>: Shortened URL by <a href="http://v.gd">v.gd</a>.</li>
+            <li><code>%author%</code>: Name of the post author.</li>
+            <li><code>%feather%</code>: Type of feather, e.g. 'text'.</li>
+            <li><code>%feather-uc%</code>: Type of feather, with the first letter capitalized, e.g. 'Text'.</li>
+        </ul>
+    </div>
+    <p class="buttons">
+        <p>
+            <button type="submit" class="yay"><img src="$theme_url/images/icons/success.png" alt="success" />${ "Update" | translate }</button>
+        </p>
+    </p>
+
+    <input type="hidden" name="hash" value="$site.secure_hashkey" id="hash" />
+    </fieldset>
+</form>
+{% endblock %}
