@@ -1,10 +1,12 @@
 <?php 
-    require_once("lib/twitteroauth.php");
+    require_once "lib/twitteroauth.php";
+    require_once "lib/urlshorten.php";
 
     class Chweet extends Modules {
         static function __install() {
             $config = Config::current();
             $config->set("chweet_format", "Blog post: %title% ~ %shorturl%");
+            $config->set("chweet_url_shortener", "isgd");
             $config->set("chweet_oauth_token", null);
             $config->set("chweet_oauth_secret", null);
             $config->set("chweet_user_id", null);
@@ -14,10 +16,15 @@
         static function __uninstall($confirm) {
             $config = Config::current();
             $config->remove("chweet_format");
+            $config->remove("chweet_url_shortener");
             $config->remove("chweet_oauth_token");
             $config->remove("chweet_oauth_secret");
             $config->remove("chweet_user_id");
             $config->remove("chweet_username");
+        }
+
+        public function admin_head() {
+            $this->chweetJS();
         }
 
         static function admin_chweet_settings($admin) {
@@ -27,7 +34,7 @@
             if (empty($_POST))
                 return $admin->display("chweet_settings");
 
-            if ($_POST['authorize']) {
+            if (isset($_POST['authorize'])) {
                 $tOAuth = new TwitterOAuth(C_KEY, C_SECRET);
                 $callback = url("/admin/?action=chweet_auth");
                 $request_token = $tOAuth->getRequestToken($callback);
@@ -43,11 +50,21 @@
                     error(__("Error"), __("Could not connect to Twitter. Refresh the page or try again later.", "chweet"));
             }
 
-            if (!isset($_POST['hash']) or $_POST['hash'] != Config::current()->secure_hashkey)
+            $config = Config::current();
+            if (!isset($_POST['hash']) or $_POST['hash'] != $config->secure_hashkey)
                 show_403(__("Access Denied"), __("Invalid security key."));
 
             if (!empty($_POST['chweet_format'])) {
-                Config::current()->set("chweet_format", $_POST['chweet_format']);
+                $config->set("chweet_format", $_POST['chweet_format']);
+                if ($config->chweet_url_shortener == "bitly") {
+                    $config->set("chweet_url_shortener", $_POST['chweet_url_shortener']);
+                    $config->set("chweet_bitly_login", $_POST['chweet_bitly_login']);
+                    $config->set("chweet_bitly_apikey", $_POST['chweet_bitly_apikey']);
+                } elseif ($config->chweet_url_shortener == "googl")
+                    $config->set("chweet_googl_apikey", $_POST['chweet_googl_apikey']);
+                else
+                    $config->set("chweet_url_shortener", $_POST['chweet_url_shortener']);
+
                 Flash::notice(__("Settings updated."), "/admin/?action=chweet_settings");
             } else
                 Flash::warning(__("Please define a tweet format."), "/admin/?action=chweet_settings");
@@ -88,18 +105,33 @@
         }
 
         public function post_options($fields, $post = NULL) {
-            $checked = @$post->tweeted ? true : false;
             $config = Config::current();
-            if (empty($config->chweet_oauth_token) and empty($config->chweet_oauth_secret))
-                $extra = "<small>Please <a href=" . url("/admin/?action=chweet_settings") . ">authorize</a> with Twitter first!</small>";
-            else
-                $extra = __("<small>Want to publish this post to Twitter?</small>", "chweet");
-            
-            $fields[] = array("attr" => "chweet",
-                              "label" => __("Tweet it!", "chweet"),
-                              "type" => "checkbox",
-                              "checked" => $checked,
-                              "extra" => $extra);
+
+            if (CHYRP_VERSION < 2.2) {
+                $checked = !empty($post->tweeted) ? 'checked="checked"' : "" ;
+                # Credit: Pascal N's post2twitter module
+                $extra = '<input type="checkbox" name="chweet" id="chweet"';
+                if (!$config->chweet_oauth_token and !$config->chweet_oauth_secret)
+                    $extra .= 'disabled="disabled" /> &nbsp;<small>Please <a href="' . url("/admin/?action=chweet_settings") . '">authorize</a> with Twitter first!</small>';
+                else
+                    $extra .=  $checked . ' /> &nbsp;<small>Want to publish this post to Twitter?</small>';
+
+                $fields[] = array("attr" => "chweet",
+                                  "label" => __("Tweet it!", "chweet"),
+                                  "extra" => $extra); # workaround for Chyrp version prior to 2.2.
+            } else {
+                $checked = !empty($post->tweeted) ? true : false ;
+                if (!$config->chweet_oauth_token and !$config->chweet_oauth_secret)
+                    $extra = "<small>Please <a href=" . url("/admin/?action=chweet_settings") . ">authorize</a> with Twitter first!</small>";
+                else
+                    $extra = __("<small>Want to publish this post to Twitter?</small>", "chweet");
+                
+                $fields[] = array("attr" => "chweet",
+                                  "label" => __("Tweet it!", "chweet"),
+                                  "type" => "checkbox",
+                                  "checked" => $checked,
+                                  "extra" => $extra);
+            }
             return $fields;
         }
 
@@ -115,9 +147,9 @@
         }
 
         public function update_post($post) {
-            $sql = SQL::current();
             fallback($chweet, (int) !empty($_POST['chweet']));
 
+            $sql = SQL::current();
             if ($sql->count("post_attributes", array("post_id" => $post->id, "name" => "tweeted")))
                 $sql->update("post_attributes",
                              array("post_id" => $post->id,
@@ -133,7 +165,7 @@
                 $this->tweet_post($post);
         }
 
-        private function tweet_post($post) {
+        public function tweet_post($post) {
             $config = Config::current();
             if (!$config->chweet_oauth_token and !$config->chweet_oauth_secret)
                 return;
@@ -151,9 +183,24 @@
                                         ucfirst($post->feather)),
                                   $config->chweet_format);
 
-            # URL shortening with v.gd
+            # URL shortening
             if (strpos($status, "%shorturl%") !== false) {
-                $shorturl = $this->vgdShorten($post->url());
+                switch($config->chweet_url_shortener) {
+                    case "bitly":
+                        $shorturl = bitlyShorten($post->url());
+                        break;
+                    case "isgd":
+                        $shorturl = isgdShorten($post->url());
+                        break;
+                    case "googl":
+                        $googl = new GoogleUrlApi($config->chweet_googl_apikey);
+                        $shorturl = $googl->shorten($post->url());
+                        break;
+                    case 503:
+                        $errorCode = 4;
+                        break;
+                }
+
                 if (!$shorturl["errorMessage"])
                     $status = str_replace("%shorturl%", $shorturl["shortURL"], $status);
             }
@@ -167,69 +214,22 @@
             return $response;
         }
 
-        # By Richard West for v.gd
-        # http://v.gd/apiexample.php.txt        
-        private function vgdShorten($url, $shorturl = null) {                
-            $url = urlencode($url);
-            $basepath = "http://v.gd/create.php?format=simple";
-            # if you want to use is.gd instead, just swap the above line for the commented out one below
-            # $basepath = "http://is.gd/create.php?format=simple";
-            $result = array();
-            $result["errorCode"] = -1;
-            $result["shortURL"] = null;
-            $result["errorMessage"] = null;
-        
-            $opts = array("http" => array("ignore_errors" => true));
-            $context = stream_context_create($opts);
-        
-            if($shorturl)
-                $path = $basepath."&shorturl=$shorturl&url=$url";
-            else
-                $path = $basepath."&url=$url";
-        
-            $response = @file_get_contents($path,false,$context);
-            
-            if(!isset($http_response_header)) {
-                $result["errorMessage"] = "Local error: Failed to fetch API page";
-                return($result);
-            }
-        
-            # Hacky way of getting the HTTP status code from the response headers
-            if (!preg_match("{[0-9]{3}}",$http_response_header[0],$httpStatus)) {
-                $result["errorMessage"] = "Local error: Failed to extract HTTP status from result request";
-                return($result);
-            }
-        
-            $errorCode = -1;
-            switch($httpStatus[0]) {
-                case 200:
-                    $errorCode = 0;
-                    break;
-                case 400:
-                    $errorCode = 1;
-                    break;
-                case 406:
-                    $errorCode = 2;
-                    break;
-                case 502:
-                    $errorCode = 3;
-                    break;
-                case 503:
-                    $errorCode = 4;
-                    break;
-            }
-        
-            if($errorCode==-1) {
-                $result["errorMessage"] = "Local error: Unexpected response code received from server";
-                return($result);
-            }
-        
-            $result["errorCode"] = $errorCode;
-            if($errorCode==0)
-                $result["shortURL"] = $response;
-            else
-                $result["errorMessage"] = $response;
-        
-            return($result);
+        public function chweetJS() { ?>
+            <script type="text/javascript">
+            $(function(){
+                $("#chweet_url_shortener").change(function(){
+                    if ($(this).val() == "bitly") {
+                        $("#bitly_fields").animate({ opacity: "show" })
+                    } else {
+                        $("#bitly_fields").animate({ opacity: "hide" }, { duration: 10 })
+                    }
+                    if ($(this).val() == "googl") {
+                        $("#googl_fields").animate({ opacity: "show" })
+                    } else {
+                        $("#googl_fields").animate({ opacity: "hide" }, { duration: 10 })
+                    }
+                })
+            })
+            </script><?php
         }
     }
