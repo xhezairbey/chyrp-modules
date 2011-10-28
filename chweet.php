@@ -56,8 +56,8 @@
 
             if (!empty($_POST['chweet_format'])) {
                 $config->set("chweet_format", $_POST['chweet_format']);
+
                 if ($config->chweet_url_shortener == "bitly") {
-                    $config->set("chweet_url_shortener", $_POST['chweet_url_shortener']);
                     $config->set("chweet_bitly_login", $_POST['chweet_bitly_login']);
                     $config->set("chweet_bitly_apikey", $_POST['chweet_bitly_apikey']);
                 } elseif ($config->chweet_url_shortener == "googl")
@@ -161,7 +161,9 @@
                                    "name" => "tweeted",
                                    "value" => $chweet));
 
-            if ($chweet and $post->status == "public")
+            if ($post->tweeted)
+                return;
+            elseif ($chweet and $post->status == "public")
                 $this->tweet_post($post);
         }
 
@@ -187,25 +189,25 @@
             if (strpos($status, "%shorturl%") !== false) {
                 switch($config->chweet_url_shortener) {
                     case "bitly":
-                        $shorturl = bitlyShorten($post->url());
+                        $shortUrl = bitly_shorten($post->url());
                         break;
                     case "isgd":
-                        $shorturl = isgdShorten($post->url());
+                        $shortUrl = isgd_shorten($post->url());
                         break;
                     case "googl":
                         $googl = new GoogleUrlApi($config->chweet_googl_apikey);
-                        $shorturl = $googl->shorten($post->url());
+                        $shortUrl = $googl->shorten($post->url());
                         break;
                     case 503:
                         $errorCode = 4;
                         break;
                 }
 
-                if (!$shorturl["errorMessage"])
-                    $status = str_replace("%shorturl%", $shorturl["shortURL"], $status);
+                if (strpos($shortUrl, "http://") !== false)
+                    $status = str_replace("%shorturl%", $shortUrl, $status);
             }
 
-            if (!$status)
+            if (empty($status))
                 return;
 
             $tOAuth = new TwitterOAuth(C_KEY, C_SECRET, $config->chweet_oauth_token, $config->chweet_oauth_secret);

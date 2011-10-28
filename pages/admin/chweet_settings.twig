@@ -35,24 +35,24 @@
         </ul>
     </div>
     <p>
-        <label for="chweet_url_shorten">${ "URL Shortener" | translate("chweet") }</label>
+        <label for="chweet_url_shortener">${ "URL Shortener" | translate("chweet") }</label>
         <select name="chweet_url_shortener" id="chweet_url_shortener">
             <option value="bitly"${ "bitly" | option_selected(site.chweet_url_shortener) }>${ "bit.ly" | translate("chweet") }</option>
             <option value="isgd"${ "vgd" | option_selected(site.chweet_url_shortener) }>${ "is.gd" | translate("chweet") }</option>
             <option value="googl"${ "googl" | option_selected(site.chweet_url_shortener) }>${ "goo.gl" | translate("chweet") }</option>
         </select>
     </p>
-    <div id="bitly_fields" {% if site.chweet_url_shortener != "bitly" %}style="display:none;"{% else %}{%endif %}>
+    <div id="bitly_fields" {% if site.chweet_url_shortener != "bitly" %}style="display:none;"{%endif %}>
     <p>
         <label for="chweet_bitly_login">Your Bitly Login</label>
-        <input name="chweet_bitly_login" id="chweet_bitly_login" type="text" value="${ site.chweet_bitly_api | escape }" />
+        <input name="chweet_bitly_login" id="chweet_bitly_login" type="text" value="${ site.chweet_bitly_login | escape }" />
     </p>
     <p>
         <label for="chweet_bitly_apikey">Your Bitly API Key</label>
         <input name="chweet_bitly_apikey" id="chweet_bitly_apikey" type="text" value="${ site.chweet_bitly_apikey | escape }" />
     </p>
     </div>
-    <div id="googl_fields" {% if site.chweet_url_shortener != "googl" %}style="display:none;"{% else %}{%endif %}>
+    <div id="googl_fields" {% if site.chweet_url_shortener != "googl" %}style="display:none;"{%endif %}>
     <p>
         <label for="chweet_googl_apikey">Your Goo.gl API Key</label>
         <input name="chweet_googl_apikey" id="chweet_googl_apikey" type="text" value="${ site.chweet_googl_apikey | escape }" />

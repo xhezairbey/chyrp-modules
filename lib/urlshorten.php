@@ -2,7 +2,7 @@
 
         # By Richard West for v.gd
         # http://v.gd/apiexample.php.txt        
-        function vgdShorten($url, $shorturl = null) {                
+        function isgd_shorten($url, $shorturl = null) {                
             $url = urlencode($url);
             $basepath = "http://is.gd/create.php?format=simple";
             # if you want to use is.gd instead, just swap the above line for the commented out one below
@@ -68,7 +68,7 @@
 
         # By Greg Winiarski
         # http://ditio.net/2010/08/15/using-bit-ly-php-api/
-        # Updated for BitLy API v3 by me   
+        # Updated for BitLy API v3 by me
         function bitly_shorten($url) {
             $config = Config::current();
             $login = $config->chweet_bitly_login;
@@ -76,25 +76,28 @@
             $format = "json";
             $query = array("login"   => $login,
                            "apiKey"  => $apikey,
-                           "longUrl" => $url,
-                           "format"  => $format);
+                           "longUrl" => urlencode($url));
 
-            $query = http_build_query($query, "", "&amp;");
+            $query = http_build_query($query);
+            $final_url = "http://api.bitly.com/v3/shorten?".$query;
 
-            $ch = curl_init();
-            $timeout = 5;
-            curl_setopt($ch, CURLOPT_URL, "http://api.bit.ly/v3/shorten?".$query);
-            curl_setopt($ch, CURLOPT_HEADER, 0);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-
-            $response = curl_exec($ch);
-            curl_close($ch);
+            if (function_exists("file_get_contents"))
+                $response = file_get_contents($final_url);
+            else {
+                $ch = curl_init();
+                $timeout = 5;
+                curl_setopt($ch, CURLOPT_URL, $final_url);
+                curl_setopt($ch, CURLOPT_HEADER, 0);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+                $response = curl_exec($ch);
+                curl_close($ch);
+            }
 
             $response = json_decode($response);
 
-            if($response->errorCode == 0 && $response->statusCode == "OK")
-                return $response->results->{$url}->shortUrl;
+            if($response->status_code == 0 && $response->status_txt == "OK")
+                return $response->data->url;
             else
                 return null;
         }
@@ -107,7 +110,7 @@
         		// Keep the API Url
         		$this->apiURL = $apiURL.'?key='.$key;
         	}
-        	
+
         	// Shorten a URL
         	function shorten($url) {
         		// Send information along
@@ -115,15 +118,7 @@
         		// Return the result
         		return isset($response['id']) ? $response['id'] : false;
         	}
-        	
-        	// Expand a URL
-        	function expand($url) {
-        		// Send information along
-        		$response = $this->send($url,false);
-        		// Return the result
-        		return isset($response['longUrl']) ? $response['longUrl'] : false;
-        	}
-        	
+
         	// Send information to Google
         	function send($url,$shorten = true) {
         		// Create cURL
