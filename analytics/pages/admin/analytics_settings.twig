@@ -1,0 +1,38 @@
+{% extends "layout.twig" %}
+
+{% block title %}${ "Google Analytics Settings" | translate("analytics") }{% endblock %}
+
+{% block content %}
+    <h1>${ "Google Analytics Settings" | translate("analytics") }</h1>
+    <form id="analytics_settings" class="split" action="{% admin "analytics_settings" %}" method="post">
+        <fieldset>
+        <p>
+            <label for="analytics_tracking_number">
+            ${ "Analytics Tracking Number" | translate("analytics") }
+            <span class="sub">${ "(i.e. <code>UA-12345678-9</code>)" | translate }</span>
+            </label>
+            <input class="text code" type="text" name="ga_tracking_number" value="${ site.ga_tracking_number | escape }" size="30" id="ga_tracking_number" />
+        </p>
+        <br />
+        <p>
+            <label for="gs_script_position">${ "Insert tracking code" | translate("analytics") }</label>
+            <select name="ga_script_position">
+                <option value="head"${ "head" | option_selected(site.ga_script_position) }>${ "before </head> tag" | e | translate("analytics") }</option>
+                <option value="body"${ "body" | option_selected(site.ga_script_position) }>${ "before </body> tag" | e | translate("analytics") }</option>
+            </select>
+        </p>
+        <br />
+        <p>
+            <label for="exclude_group">${ "Exclude Group" | translate("analytics") }</label>
+            <small>${ "Use group permissions to exclude certain groups (e.g., Admins) from the results." | translate("analytics") }</small>
+        </p>
+        <p class="buttons">
+            <p>
+                <button type="submit" class="yay"><img src="$theme_url/images/icons/success.png" alt="success" />${ "Update" | translate("analytics") }</button>
+            </p>
+        </p>
+
+        <input type="hidden" name="hash" value="$site.secure_hashkey" id="hash" />
+        </fieldset>
+    </form>
+{% endblock %}

@@ -1,0 +1,20 @@
+name: Google Analytics
+url: http://xhezairi.com/
+version: 0.3
+description: Easily insert Google Analytics tracking code to your Chyrp site.
+author:
+  name: Arian Xhezairi
+  url: http://xhezairi.com/
+notifications:
+  - Please remember to set your Google Analytics tracking number.
+confirm: Do you want to remove Google Analytics configuration from you Chyrp install?
+
+
+# 0.1: Initial release.
+# 0.2: 
+  - Fix hard-coded UA code. (Thanks vindimy)
+  - Added Group permission to enable excluding a certain user group from being tracked.
+  - Updated Strings to be translatable.
+# 0.3:
+  - Fixed Group exclusion.
+  - Fixed blank page issue. (Thanks Masen)
