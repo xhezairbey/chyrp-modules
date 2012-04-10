@@ -1,9 +1,12 @@
 name: Chweet
-url: http://xhezairi.com/projects/chweet
-version: 0.2.0
+url: http://xhezairi.com/projects/chyrp-modules
+version: 0.2
 description: Publish your posts to your Twitter account.
 author:
   name: Arian Xhezairi
   url: http://xhezairi.com/
 notifications:
   - Please remember to authorize with Twitter before use.
+
+# 0.1: Initial release.
+# 0.2: Bug fixes. Improved overall performance.
