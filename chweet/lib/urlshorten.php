@@ -20,15 +20,15 @@
             else
                 $path = $basepath."&url=$url";
         
-            $response = @file_get_contents($path,false,$context);
+            $response = @file_get_contents($path, false, $context);
             
-            if(!isset($http_response_header)) {
+            if (!isset($http_response_header)) {
                 $result["errorMessage"] = "Local error: Failed to fetch API page";
                 return($result);
             }
         
             # Hacky way of getting the HTTP status code from the response headers
-            if (!preg_match("{[0-9]{3}}",$http_response_header[0],$httpStatus)) {
+            if (!preg_match("{[0-9]{3}}", $http_response_header[0], $httpStatus)) {
                 $result["errorMessage"] = "Local error: Failed to extract HTTP status from result request";
                 return($result);
             }
@@ -52,14 +52,14 @@
                     break;
             }
         
-            if($errorCode==-1) {
+            if($errorCode == -1) {
                 $result["errorMessage"] = "Local error: Unexpected response code received from server";
                 return($result);
             }
         
             $result["errorCode"] = $errorCode;
-            if($errorCode==0)
-                $result["shortURL"] = $response;
+            if($errorCode == 0)
+                $result = $response;
             else
                 $result["errorMessage"] = $response;
         
